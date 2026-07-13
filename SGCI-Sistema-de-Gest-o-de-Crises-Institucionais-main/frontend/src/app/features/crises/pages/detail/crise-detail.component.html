@@ -1,0 +1,167 @@
+<section class="page">
+  <div class="page__actions">
+    <a class="btn btn--secondary btn--sm" routerLink="/crises">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m12 19-7-7 7-7" />
+        <path d="M19 12H5" />
+      </svg>
+      <span>Voltar</span>
+    </a>
+  </div>
+
+  @if (error(); as errorMessage) {
+    <p class="alert alert--error">{{ errorMessage }}</p>
+  }
+
+  @if (loading()) {
+    <article class="card-panel card--pad">
+      <span class="skeleton skeleton--title"></span>
+      <span class="skeleton skeleton--text" style="width: 80%"></span>
+      <span class="skeleton skeleton--text" style="width: 60%"></span>
+    </article>
+  } @else if (crise(); as c) {
+    <article class="card-panel card--pad detail">
+      <header class="detail__header">
+        <h1>{{ c.titulo }}</h1>
+        <div class="detail__badges">
+          <span [class]="'badge badge--' + c.status.toLowerCase()">{{
+            c.status.toLowerCase().replace('_', ' ')
+          }}</span>
+          <span [class]="'badge badge--nivel-' + c.nivel.toLowerCase()">{{
+            c.nivel.toLowerCase()
+          }}</span>
+        </div>
+      </header>
+
+      <p class="detail__desc">{{ c.descricao }}</p>
+
+      <dl class="detail__grid">
+        <div>
+          <dt>Tipo de Crise</dt>
+          <dd>{{ tipoNome(c.tipoCriseId) }}</dd>
+        </div>
+        <div>
+          <dt>Campus</dt>
+          <dd>{{ campusNome(c.campusId) }}</dd>
+        </div>
+        <div>
+          <dt>Cenário</dt>
+          <dd>{{ cenarioNome(c.cenarioId) }}</dd>
+        </div>
+        <div>
+          <dt>Departamento</dt>
+          <dd>{{ departamentoNome(c.departamentoId) }}</dd>
+        </div>
+        <div>
+          <dt>Responsável</dt>
+          <dd>{{ c.createdByName || '—' }}</dd>
+        </div>
+        <div>
+          <dt>Data de criação</dt>
+          <dd>{{ c.createdAt | date: 'dd/MM/yyyy HH:mm' }}</dd>
+        </div>
+        <div>
+          <dt>Última atualização</dt>
+          <dd>{{ (ultimaAtualizacao() | date: 'dd/MM/yyyy HH:mm') || '—' }}</dd>
+        </div>
+      </dl>
+    </article>
+
+    <div *appRole="['ADMIN']" class="detail__actions">
+      @if (proximoStatus(); as proximo) {
+        <button class="btn-primary" type="button" (click)="avancarStatus()">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
+          </svg>
+          <span>Avançar para {{ proximo.replace('_', ' ') }}</span>
+        </button>
+      } @else {
+        <p class="muted">Crise encerrada. Nenhuma mudança de status disponível.</p>
+      }
+    </div>
+
+    @if (encerrada()) {
+      <p class="alert alert--success" role="status">
+        <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+        Esta crise está encerrada e não pode mais ser editada.
+      </p>
+    }
+
+    @if (formVisivel()) {
+      <form
+        *appRole="['ADMIN']"
+        #acaoForm="ngForm"
+        (ngSubmit)="registrarAcao()"
+        class="card-panel form-section"
+      >
+        <div class="form-section__head">
+          <span class="form-section__icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M8 12h8M12 8v8" />
+            </svg>
+          </span>
+          <span class="form-section__titles">
+            <span class="form-section__title">Registrar Ação</span>
+            <span class="form-section__subtitle">Adicione uma ação à linha do tempo desta crise</span>
+          </span>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="tipo">Tipo</label>
+            <select class="form-control" id="tipo" name="tipo" required [(ngModel)]="novaAcao.tipo">
+              @for (tipo of tiposAcao; track tipo) {
+                <option [value]="tipo">{{ tipo }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="descricao">Descrição</label>
+          <textarea
+            class="form-control"
+            id="descricao"
+            name="descricao"
+            placeholder="Descreva a ação realizada..."
+            required
+            [(ngModel)]="novaAcao.descricao"
+          ></textarea>
+        </div>
+
+        <div class="form__actions">
+          <button class="btn-primary" type="submit" [disabled]="acaoForm.invalid || savingAcao()">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14" />
+              <path d="M12 5v14" />
+            </svg>
+            <span>{{ savingAcao() ? 'Salvando...' : 'Salvar Ação' }}</span>
+          </button>
+        </div>
+      </form>
+    }
+
+    <div class="timeline-section">
+      <h2>Linha do tempo da crise</h2>
+      <ol class="timeline">
+        @for (acao of acoes(); track acao.id) {
+          <li class="timeline__item">
+            <span class="timeline__marker" aria-hidden="true"></span>
+            <div class="timeline__content">
+              <div class="timeline__head">
+                <span class="badge badge--info">{{ acao.tipo }}</span>
+                <span class="timeline__date">{{ acao.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+              <p class="timeline__desc">{{ acao.descricao }}</p>
+              <p class="timeline__meta">Registrada por: {{ acao.usuarioNome || ('Usuário #' + acao.usuarioId) }}</p>
+            </div>
+          </li>
+        } @empty {
+          <p class="empty">Nenhuma ação registrada.</p>
+        }
+      </ol>
+    </div>
+  }
+</section>
